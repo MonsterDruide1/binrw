@@ -263,16 +263,16 @@ where
     /// let result = Test::read_le(&mut data).unwrap();
     /// assert_eq!(result.value, 0x100f07);
     /// ```
-    pub fn parse_with<R, F, Args>(
+    pub fn parse_with<R, F, Args, RealArgs>(
         parser: F,
-    ) -> impl Fn(&mut R, Endian, FilePtrArgs<Args>) -> BinResult<Value>
+    ) -> impl Fn(&mut R, Endian, FilePtrArgs<Args>, RealArgs) -> BinResult<Value>
     where
         R: Read + Seek,
         F: Fn(&mut R, Endian, Args) -> BinResult<Value>,
-        Ptr: for<'a> BinRead<Args<'a> = ()> + IntoSeekFrom,
+        Ptr: for<'a> BinRead<Args<'a> = RealArgs> + IntoSeekFrom,
     {
         let parser = Self::with(parser);
-        move |reader, endian, args| parser(reader, endian, args).map(Self::into_inner)
+        move |reader, endian, args, realargs| parser(reader, endian, args, realargs).map(Self::into_inner)
     }
 
     /// Creates a parser that reads an offset, then seeks to and parses the
@@ -300,16 +300,16 @@ where
     /// assert_eq!(result.value.ptr, 2);
     /// assert_eq!(result.value.value, 0x100f07);
     /// ```
-    pub fn with<R, F, Args>(
+    pub fn with<R, F, Args, RealArgs>(
         parser: F,
-    ) -> impl Fn(&mut R, Endian, FilePtrArgs<Args>) -> BinResult<Self>
+    ) -> impl Fn(&mut R, Endian, FilePtrArgs<Args>, RealArgs) -> BinResult<Self>
     where
         R: Read + Seek,
         F: Fn(&mut R, Endian, Args) -> BinResult<Value>,
-        Ptr: for<'a> BinRead<Args<'a> = ()> + IntoSeekFrom,
+        Ptr: for<'a> BinRead<Args<'a> = RealArgs> + IntoSeekFrom,
     {
-        move |reader, endian, args| {
-            let ptr = Ptr::read_options(reader, endian, ())?;
+        move |reader, endian, args, realargs| {
+            let ptr = Ptr::read_options(reader, endian, realargs)?;
             let value = Self::read_value(ptr, &parser, reader, endian, args)?;
             Ok(Self { ptr, value })
         }
